@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.AI;
 
 public class PlayerController2 : MonoBehaviour
 {
@@ -7,8 +6,14 @@ public class PlayerController2 : MonoBehaviour
 
     void Update()
     {
-        float h = Input.GetAxis("Horizontal");
-        float v = Input.GetAxis("Vertical");
-        transform.Translate(new Vector3(h, 0, v) * speed * Time.deltaTime, Space.World);
+        float h = Input.GetAxisRaw("Horizontal");
+        float v = Input.GetAxisRaw("Vertical");
+
+        Vector3 move = new Vector3(h, 0, v);
+
+        if (move.sqrMagnitude > 0.01f)
+        {
+            transform.Translate(move.normalized * speed * Time.deltaTime, Space.World);
+        }
     }
 }

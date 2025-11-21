@@ -2,21 +2,21 @@ using UnityEngine;
 
 public class MovePointGenerate : MonoBehaviour
 {
-    [SerializeField] private int _generateNum = 30;
-    [SerializeField] private Vector2 _range = new Vector2(50, 50);
+    [SerializeField] private int generateNum = 30;
+    [SerializeField] private Vector2 range = new Vector2(50, 50);
 
     void Start()
     {
         var parent = new GameObject("MovePoints");
+        parent.transform.SetParent(transform);
 
-        for (int i = 0; i < _generateNum; i++)
+        for (int i = 0; i < generateNum; i++)
         {
             var movePoint = new GameObject($"MovePoint({i})");
             movePoint.tag = "MovePoint";
             movePoint.layer = LayerMask.NameToLayer("MovePoint");
             movePoint.transform.parent = parent.transform;
 
-            // コライダー追加（OverlapSphere検出用）
             var sphere = movePoint.AddComponent<SphereCollider>();
             sphere.isTrigger = true;
             sphere.radius = 0.5f;
@@ -26,9 +26,9 @@ public class MovePointGenerate : MonoBehaviour
             rb.constraints = RigidbodyConstraints.FreezeAll;
 
             movePoint.transform.position = new Vector3(
-                Random.Range(-_range.x, _range.x),
+                Random.Range(-range.x, range.x),
                 0,
-                Random.Range(-_range.y, _range.y)
+                Random.Range(-range.y, range.y)
             );
         }
     }
