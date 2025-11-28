@@ -3,125 +3,133 @@ using UnityEngine.AI;
 using System.Collections;
 using System.Collections.Generic;
 
-public class Enemy : MonoBehaviour
+public class Enemy2 : MonoBehaviour
 {
-    public Transform player;
-    public float targetDistance = 10f;
-    public float searchRadius = 20f;
-    public LayerMask mask;
+    public static Enemy2 currentIt = null;
+    public bool isIt = false;
 
     private NavMeshAgent agent;
-    private float escapeTime;
-    private enum EnemyState { NORMAL, TENSION }
-    private EnemyState currentState = EnemyState.NORMAL;
-
-    private List<Collider> foundList = new List<Collider>();
-    private float searchCosTheta = Mathf.Cos(90 * Mathf.Deg2Rad);
-
-    private Coroutine escapeRoutine;
+    private bool isSwitchingIt = false;
+    private bool isCooldown = false;
+    private float switchDelay = 2f;
+    private float tagCooldown = 1f;
 
     void Start()
     {
         agent = GetComponent<NavMeshAgent>();
+        UpdateColor();
+
+        // ランダムで最初の鬼を設定
+        if (isIt) currentIt = this;
     }
 
     void Update()
     {
-        if (currentState == EnemyState.NORMAL)
+        UpdateColor();
+
+        if (isIt && !isSwitchingIt)
+            ChaseTarget();
+        else if (!isIt && !isSwitchingIt)
+            Wander();
+    }
+
+    void UpdateColor()
+    {
+        var renderer = GetComponent<Renderer>();
+        if (renderer != null)
+            renderer.material.color = isIt ? Color.red : Color.white;
+    }
+
+    void ChaseTarget()
+    {
+        Transform target = FindNearestTarget();
+        if (target == null) return;
+
+        agent.SetDestination(target.position);
+
+        float dist = Vector3.Distance(transform.position, target.position);
+        if (dist < 1.5f)
         {
-            float distance = (transform.position - player.position).magnitude;
-            if (distance < targetDistance)
-            {
-                RunAway();
-            }
+            StartCoroutine(TagTarget(target));
         }
     }
 
-    public void RunAway()
+    Transform FindNearestTarget()
     {
-        if (escapeRoutine != null)
-            StopCoroutine(escapeRoutine);
+        List<Transform> candidates = new List<Transform>();
 
-        escapeRoutine = StartCoroutine(EscapeRoutine());
+        PlayerController2[] players = FindObjectsOfType<PlayerController2>();
+        foreach (var p in players)
+            if (!p.isIt) candidates.Add(p.transform);
+
+        Enemy2[] enemies = FindObjectsOfType<Enemy2>();
+        foreach (var e in enemies)
+            if (!e.isIt && e != this) candidates.Add(e.transform);
+
+        if (candidates.Count == 0) return null;
+        return candidates[Random.Range(0, candidates.Count)];
     }
 
-    private IEnumerator EscapeRoutine()
+    IEnumerator TagTarget(Transform newIt)
     {
-        currentState = EnemyState.TENSION;
-        escapeTime = 0f;
-        agent.angularSpeed = 200;
+        // クールタイム中は何もしない
+        if (isCooldown) yield break;
+        isCooldown = true;
 
-        // プレイヤーと逆方向を向く
-        Vector3 diff = (transform.position - player.position).normalized;
-        diff.y = 0;
-        transform.forward = diff;
+        // 現在の鬼は停止
+        isSwitchingIt = true;
+        yield return new WaitForSeconds(switchDelay);
+        isSwitchingIt = false;
 
-        // 最初の目的地
-        agent.SetDestination(GetNextPosition());
-
-        while (currentState == EnemyState.TENSION)
+        // 新しい鬼を設定
+        PlayerController2 p = newIt.GetComponent<PlayerController2>();
+        if (p != null && p.CanBeTagged())
         {
-            // 次の目的地へ
-            if (!agent.pathPending && agent.remainingDistance < 2f)
-            {
-                agent.SetDestination(GetNextPosition());
-            }
-
-            // プレイヤーと距離が離れたら通常へ戻す
-            float dist = (transform.position - player.position).sqrMagnitude;
-            if (dist > targetDistance * targetDistance)
-            {
-                escapeTime += Time.deltaTime;
-                if (escapeTime >= 10f)
-                {
-                    Usual();
-                    yield break;
-                }
-            }
-
-            yield return null;
-        }
-    }
-
-    void Usual()
-    {
-        currentState = EnemyState.NORMAL;
-        agent.ResetPath();
-    }
-
-    public Vector3 GetNextPosition()
-    {
-        foundList.Clear();
-        foundList.AddRange(Physics.OverlapSphere(transform.position, searchRadius, mask));
-
-        if (foundList.Count == 0)
-        {
-            foundList.AddRange(Physics.OverlapSphere(transform.position, 40f, mask));
+            p.isIt = true;
+            PlayerController2.currentPlayerIt = p;
+            StartCoroutine(p.HandleSwitchDelay());
+            StartCoroutine(p.StartCooldown());
         }
         else
         {
-            for (int i = foundList.Count - 1; i >= 0; i--)
+            Enemy2 e = newIt.GetComponent<Enemy2>();
+            if (e != null)
             {
-                if (!CheckFoundObject(foundList[i].gameObject))
-                    foundList.RemoveAt(i);
+                e.isIt = true;
+                StartCoroutine(e.HandleSwitchDelay());
+                StartCoroutine(e.StartCooldown());
             }
         }
 
-        if (foundList.Count == 0)
-            return transform.position;
+        this.isIt = false;
+        currentIt = null;
 
-        return foundList[Random.Range(0, foundList.Count)].transform.position;
+        // クールタイム
+        yield return new WaitForSeconds(tagCooldown);
+        isCooldown = false;
     }
 
-    private bool CheckFoundObject(GameObject target)
+    IEnumerator HandleSwitchDelay()
     {
-        Vector3 myXZ = new Vector3(transform.position.x, 0, transform.position.z);
-        Vector3 targetXZ = new Vector3(target.transform.position.x, 0, target.transform.position.z);
-        Vector3 toTargetDir = (targetXZ - myXZ).normalized;
+        isSwitchingIt = true;
+        yield return new WaitForSeconds(switchDelay);
+        isSwitchingIt = false;
+    }
 
-        if (toTargetDir.sqrMagnitude <= Mathf.Epsilon)
-            return true;
+    IEnumerator StartCooldown()
+    {
+        isCooldown = true;
+        yield return new WaitForSeconds(tagCooldown);
+        isCooldown = false;
+    }
 
-        return Vector3.Dot(transform.forward, toTargetDir) >= searchCosTheta;
+    void Wander()
+    {
+        if (!agent.hasPath || agent.remainingDistance < 1f)
+        {
+            Vector3 randomPos = transform.position + Random.insideUnitSphere * 5f;
+            randomPos.y = transform.position.y;
+            agent.SetDestination(randomPos);
+        }
     }
 }

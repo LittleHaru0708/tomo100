@@ -13,9 +13,12 @@ public class MovePointGenerate : MonoBehaviour
         for (int i = 0; i < generateNum; i++)
         {
             var movePoint = new GameObject($"MovePoint({i})");
-            movePoint.tag = "MovePoint";
-            movePoint.layer = LayerMask.NameToLayer("MovePoint");
             movePoint.transform.parent = parent.transform;
+            movePoint.transform.position = new Vector3(
+                Random.Range(-range.x, range.x),
+                0,
+                Random.Range(-range.y, range.y)
+            );
 
             var sphere = movePoint.AddComponent<SphereCollider>();
             sphere.isTrigger = true;
@@ -24,12 +27,6 @@ public class MovePointGenerate : MonoBehaviour
             var rb = movePoint.AddComponent<Rigidbody>();
             rb.useGravity = false;
             rb.constraints = RigidbodyConstraints.FreezeAll;
-
-            movePoint.transform.position = new Vector3(
-                Random.Range(-range.x, range.x),
-                0,
-                Random.Range(-range.y, range.y)
-            );
         }
     }
 }

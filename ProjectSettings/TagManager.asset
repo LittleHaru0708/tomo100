@@ -5,11 +5,12 @@ TagManager:
   serializedVersion: 3
   tags:
   - TalkNPC
+  - MovePoint
   layers:
   - Default
   - TransparentFX
   - Ignore Raycast
-  - 
+  - MovePoint
   - Water
   - UI
   - 

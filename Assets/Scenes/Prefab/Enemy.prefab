@@ -124,12 +124,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 61d14648adf06a74db1057eeae4b0e4f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  player: {fileID: 0}
-  targetDistance: 10
-  searchRadius: 20
-  mask:
-    serializedVersion: 2
-    m_Bits: 8
+  isIt: 1
 --- !u!195 &4177591855794163506
 NavMeshAgent:
   m_ObjectHideFlags: 0
